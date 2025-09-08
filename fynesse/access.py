@@ -139,6 +139,15 @@ def data() -> Union[pd.DataFrame, None]:
 
 
 def plot_city_map(place_name, latitude, longitude, boxing_size):
+    tags = {
+    "amenity": True,
+    "buildings": True,
+    "historic": True,
+    "leisure": True,
+    "shop": True,
+    "tourism": True,
+    "religion": True,
+    "memorial": True}
     placestub = place_name.lower().replace(' ', '-').replace(',','')
     box_width = boxing_size/111 # About 11 km
     box_height = boxing_size/111
@@ -160,6 +169,7 @@ def plot_city_map(place_name, latitude, longitude, boxing_size):
     buildings.plot(ax=ax, facecolor="gray", edgecolor="gray")
     edges.plot(ax=ax, linewidth=1, edgecolor="black", alpha=0.3)
     nodes.plot(ax=ax, color="black", markersize=1, alpha=0.3)
+    pois = ox.features_from_bbox(bbox, tags)
     pois.plot(ax=ax, color="green", markersize=5, alpha=1)
     ax.set_xlim(west, east)
     ax.set_ylim(south, north)
