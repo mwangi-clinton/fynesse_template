@@ -299,8 +299,8 @@ def plot_city_map_with_points(
         ax.legend()
 
         logger.info(f"Successfully plotted map for {place_name}")
-
-        return fig
+        plt.show()
+        return None
 
     except Exception as e:
         logger.error(f"Error while plotting map for {place_name}: {e}")
