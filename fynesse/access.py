@@ -131,32 +131,9 @@ def data() -> Union[pd.DataFrame, None]:
         print(f"Error loading data: {e}")
         return None
     
-
 def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_size: float) -> Optional[plt.Figure]:
     """
     Plot a city map using OpenStreetMap (OSM) data around a given location.
-
-    IMPLEMENTATION GUIDE
-    ====================
-    1. INPUTS:
-       - place_name: Name of the location (string)
-       - latitude, longitude: Center point coordinates
-       - boxing_size: Size of bounding box in degrees (~111 km per degree)
-
-    2. PROCESS:
-       - Build bounding box around coordinates
-       - Retrieve OSM data: streets, nodes, buildings, points of interest
-       - Plot all layers onto a matplotlib figure
-
-    3. ERROR HANDLING:
-       - Handle OSM data retrieval issues
-       - Handle empty or invalid responses
-       - Provide helpful error messages
-
-    4. LOGGING:
-       - Log start and parameters
-       - Log each retrieval step
-       - Log success or errors
 
     Args:
         place_name (str): Name of the place (e.g., "Nyeri, Kenya")
@@ -196,7 +173,7 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
 
         # Load OSM data
         logger.info("Fetching OSM graph data...")
-        graph = ox.graph_from_bbox(north, south, east, west)
+        graph = ox.graph_from_bbox(north=north, south=south, east=east, west=west)  # ✅ FIXED
         logger.info("Fetching OSM geocode data...")
         area = ox.geocode_to_gdf(place_name)
 
@@ -204,10 +181,10 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
         nodes, edges = ox.graph_to_gdfs(graph)
 
         logger.info("Fetching buildings data...")
-        buildings = ox.features_from_bbox(north, south, east, west, tags={"building": True})
+        buildings = ox.features_from_bbox(north=north, south=south, east=east, west=west, tags={"building": True})
 
         logger.info("Fetching POIs...")
-        pois = ox.features_from_bbox(north, south, east, west, tags)
+        pois = ox.features_from_bbox(north=north, south=south, east=east, west=west, tags=tags)
 
         # Plot
         fig, ax = plt.subplots(figsize=(6, 6))
@@ -229,83 +206,5 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
         logger.error(f"Error while plotting map for {place_name}: {e}")
         print(f"Error: Could not plot map for {place_name}. {e}")
         return None
-    
-def plot_city_map_with_points(
-    place_name: str,
-    latitude: float,
-    longitude: float,
-    boxing_size: float,
-    porini_df
-) -> Optional[plt.Figure]:
-    """
-    Plot a city map using OpenStreetMap (OSM) data around a given location,
-    and overlay dataset points (lat/lon) as red markers.
 
-    Args:
-        place_name (str): Name of the place (e.g., "Nyeri, Kenya")
-        latitude (float): Center latitude
-        longitude (float): Center longitude
-        boxing_size (float): Size of the bounding box (approx. in km)
-        porini_df (pd.DataFrame): Dataset containing 'Latitude' and 'Longitude' columns
-
-    Returns:
-        Optional[plt.Figure]: The matplotlib figure object if successful, None otherwise
-    """
-
-    try:
-        # Define bounding box
-        box_width = boxing_size / 111  # ~111 km per degree
-        box_height = boxing_size / 111
-        north = latitude + box_height / 2
-        south = latitude - box_height / 2
-        west = longitude - box_width / 2
-        east = longitude + box_width / 2
-
-        # Define tags
-        tags = {
-            "amenity": True,
-            "building": True,
-            "historic": True,
-            "leisure": True,
-            "shop": True,
-            "tourism": True,
-            "religion": True,
-            "memorial": True,
-        }
-
-        # Load OSM data
-        graph = ox.graph_from_bbox(north, south, east, west)
-        area = ox.geocode_to_gdf(place_name)
-
-        nodes, edges = ox.graph_to_gdfs(graph)
-        buildings = ox.features_from_bbox(north, south, east, west, tags={"building": True})
-        pois = ox.features_from_bbox(north, south, east, west, tags)
-
-        # Convert dataset to GeoDataFrame
-        gdf_points = gpd.GeoDataFrame(
-            porini_df,
-            geometry=gpd.points_from_xy(porini_df["Longitude"], porini_df["Latitude"]),
-            crs="EPSG:4326"
-        )
-
-        # Plot
-        fig, ax = plt.subplots(figsize=(6, 6))
-        area.plot(ax=ax, color="tan", alpha=0.5)
-        buildings.plot(ax=ax, facecolor="gray", edgecolor="gray")
-        edges.plot(ax=ax, linewidth=1, edgecolor="black", alpha=0.3)
-        nodes.plot(ax=ax, color="black", markersize=1, alpha=0.3)
-        pois.plot(ax=ax, color="green", markersize=5, alpha=1)
-
-        # Plot dataset points
-        gdf_points.plot(ax=ax, color="red", markersize=40, alpha=0.7, label="Dataset Points")
-
-        ax.set_xlim(west, east)
-        ax.set_ylim(south, north)
-        ax.set_title(place_name, fontsize=14)
-        ax.legend()
-
-        return fig
-
-    except Exception as e:
-        print(f"Error: Could not plot map for {place_name}. {e}")
-        return None
+ 
