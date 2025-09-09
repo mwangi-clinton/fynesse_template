@@ -5,7 +5,8 @@ import osmnx as ox
 import matplotlib.pyplot as plt
 import warnings
 import math
-warnings.filterwarnings("ignore", category=FutureWarning, module='osmnx')
+
+warnings.filterwarnings("ignore", category=FutureWarning, module="osmnx")
 from .config import *
 from . import access
 
@@ -101,6 +102,7 @@ def data() -> Union[pd.DataFrame, Any]:
         print(f"Error assessing data: {e}")
         return None
 
+
 def get_feature_vector(latitude, longitude, box_size_km=2, features=None):
     """
     Given a central point (latitude, longitude) and a bounding box size,
@@ -135,37 +137,34 @@ def get_feature_vector(latitude, longitude, box_size_km=2, features=None):
     # Return dictionary of counts
 
     import osmnx as ox
-    box_width = box_size_km/111 # About 2 km
-    box_height = box_size_km/111
-    north = latitude + box_height/2
-    south = latitude - box_height/2
-    west = longitude - box_width/2
-    east = longitude + box_width/2
-    bbox = (west, south, east, north)
-    tags = {
-    f"{key}:{value}" if value else key: True
-    for key, value in features
-    }
-    #This initiliaze the pois with zeros
-    poi_counts = {
-        f"{key}:{value}" if value else key: 0
-        for key, value in features
-    }
-    try:
-      pois = ox.features_from_bbox(bbox, tags)
-      pois_df = pd.DataFrame(pois)
 
-      for key, value in poi_types:
-          if key in pois_df.columns:
-              if value:  # count only that value
-                  poi_counts[f"{key}:{value}"] = (pois_df[key] == value).sum()
-              else:  # count any non-null entry
-                  poi_counts[key] = pois_df[key].notnull().sum()
+    box_width = box_size_km / 111  # About 2 km
+    box_height = box_size_km / 111
+    north = latitude + box_height / 2
+    south = latitude - box_height / 2
+    west = longitude - box_width / 2
+    east = longitude + box_width / 2
+    bbox = (west, south, east, north)
+    tags = {f"{key}:{value}" if value else key: True for key, value in features}
+    # This initiliaze the pois with zeros
+    poi_counts = {f"{key}:{value}" if value else key: 0 for key, value in features}
+    try:
+        pois = ox.features_from_bbox(bbox, tags)
+        pois_df = pd.DataFrame(pois)
+
+        for key, value in poi_types:
+            if key in pois_df.columns:
+                if value:  # count only that value
+                    poi_counts[f"{key}:{value}"] = (pois_df[key] == value).sum()
+                else:  # count any non-null entry
+                    poi_counts[key] = pois_df[key].notnull().sum()
 
     except:
-      print("No features found, will returns all zeros")
+        print("No features found, will returns all zeros")
 
     return poi_counts
+
+
 def query(data: Union[pd.DataFrame, Any]) -> str:
     """Request user input for some aspect of the data."""
     raise NotImplementedError

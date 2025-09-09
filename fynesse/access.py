@@ -9,54 +9,19 @@ This module handles data access functionality including:
 
 Legal and ethical considerations are paramount in data access.
 Ensure compliance with e.g. .GDPR, intellectual property laws, and ethical guidelines.
-
-Best Practice on Implementation
-===============================
-
-1. BASIC ERROR HANDLING:
-   - Use try/except blocks to catch common errors
-   - Provide helpful error messages for debugging
-   - Log important events for troubleshooting
-
-2. WHERE TO ADD ERROR HANDLING:
-   - File not found errors when loading data
-   - Network errors when downloading from web
-   - Permission errors when accessing files
-   - Data format errors when parsing files
-
-3. SIMPLE LOGGING:
-   - Use print() statements for basic logging
-   - Log when operations start and complete
-   - Log errors with context information
-   - Log data summary information
-
-4. EXAMPLE PATTERNS:
-   
-   Basic error handling:
-   try:
-       df = pd.read_csv('data.csv')
-   except FileNotFoundError:
-       print("Error: Could not find data.csv file")
-       return None
-   
-   With logging:
-   print("Loading data from data.csv...")
-   try:
-       df = pd.read_csv('data.csv')
-       print(f"Successfully loaded {len(df)} rows of data")
-       return df
-   except FileNotFoundError:
-       print("Error: Could not find data.csv file")
-       return None
 """
 
-from typing import Any, Union, Optional
+from typing import Any, Dict, Optional, Union
 import pandas as pd
 import logging
 import osmnx as ox
 import matplotlib.pyplot as plt
-import geopandas as gpd
+from matplotlib.figure import Figure
+import geopandas as gpd  # type: ignore[import]
 
+
+# Type alias for OSM tag dictionaries expected by osmnx
+TagsType = Dict[str, Union[bool, str, list[str]]]
 
 # Set up basic logging
 logging.basicConfig(
@@ -65,54 +30,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def data() -> Union[pd.DataFrame, None]:
+def data() -> Optional[pd.DataFrame]:
     """
-    Read the data from the web or local file, returning structured format such as a data frame.
+    Read the data from the web or local file, returning a pandas DataFrame.
 
-    IMPLEMENTATION GUIDE
-    ====================
-
-    1. REPLACE THIS FUNCTION WITH YOUR ACTUAL DATA LOADING CODE:
-       - Load data from your specific sources
-       - Handle common errors (file not found, network issues)
-       - Validate that data loaded correctly
-       - Return the data in a useful format
-
-    2. ADD ERROR HANDLING:
-       - Use try/except blocks for file operations
-       - Check if data is empty or corrupted
-       - Provide helpful error messages
-
-    3. ADD BASIC LOGGING:
-       - Log when you start loading data
-       - Log success with data summary
-       - Log errors with context
-
-    4. EXAMPLE IMPLEMENTATION:
-       try:
-           print("Loading data from data.csv...")
-           df = pd.read_csv('data.csv')
-           print(f"Successfully loaded {len(df)} rows, {len(df.columns)} columns")
-           return df
-       except FileNotFoundError:
-           print("Error: data.csv file not found")
-           return None
-       except Exception as e:
-           print(f"Error loading data: {e}")
-           return None
-
-    Returns:
-        DataFrame or other structured data format
+    Replace with your actual data-loading logic.
     """
     logger.info("Starting data access operation")
 
     try:
-        # IMPLEMENTATION: Replace this with your actual data loading code
-        # Example: Load data from a CSV file
         logger.info("Loading data from data.csv")
         df = pd.read_csv("data.csv")
 
-        # Basic validation
         if df.empty:
             logger.warning("Loaded data is empty")
             return None
@@ -130,8 +59,15 @@ def data() -> Union[pd.DataFrame, None]:
         logger.error(f"Unexpected error loading data: {e}")
         print(f"Error loading data: {e}")
         return None
-    
-def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_size: float) -> Optional[plt.Figure]:
+
+
+def plot_city_map(
+    place_name: str,
+    latitude: float,
+    longitude: float,
+    boxing_size: float,
+    return_fig: bool = False,
+) -> Optional[Figure]:
     """
     Plot a city map using OpenStreetMap (OSM) data around a given location.
 
@@ -140,27 +76,28 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
         latitude (float): Center latitude
         longitude (float): Center longitude
         boxing_size (float): Size of the bounding box (approx. in km)
+        return_fig (bool): If True, do NOT call plt.show() and instead return the Figure object.
+                           If False (default), show the plot and return None.
 
     Returns:
-        Optional[plt.Figure]: The matplotlib figure object if successful, None otherwise
+        Optional[matplotlib.figure.Figure]: The matplotlib figure object if return_fig is True,
+                                           otherwise None on success or None on failure.
     """
-
     logger.info(f"Starting map plot for {place_name} at ({latitude}, {longitude})")
 
     try:
-        # Define bounding box
+        # Define bounding box (degrees)
         box_width = boxing_size / 111  # ~111 km per degree
         box_height = boxing_size / 111
         north = latitude + box_height / 2
         south = latitude - box_height / 2
         west = longitude - box_width / 2
         east = longitude + box_width / 2
-        bbox = (west, south, east, north)
 
-        logger.info(f"Bounding box: {bbox}")
+        logger.info(f"Bounding box (N,S,E,W): {north}, {south}, {east}, {west}")
 
-        # Define tags
-        tags = {
+        # Define tags with explicit value union type to satisfy mypy/osmnx typing
+        tags: TagsType = {
             "amenity": True,
             "building": True,
             "historic": True,
@@ -170,10 +107,12 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
             "religion": True,
             "memorial": True,
         }
+        building_tags: TagsType = {"building": True}
 
         # Load OSM data
         logger.info("Fetching OSM graph data...")
-        graph = ox.graph_from_bbox(bbox)  
+        graph = ox.graph_from_bbox(north, south, east, west)
+
         logger.info("Fetching OSM geocode data...")
         area = ox.geocode_to_gdf(place_name)
 
@@ -181,10 +120,10 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
         nodes, edges = ox.graph_to_gdfs(graph)
 
         logger.info("Fetching buildings data...")
-        buildings = ox.features_from_bbox(bbox, tags={"building": True})
+        buildings = ox.features_from_bbox(north, south, east, west, tags=building_tags)
 
         logger.info("Fetching POIs...")
-        pois = ox.features_from_bbox(bbox, tags=tags)
+        pois = ox.features_from_bbox(north, south, east, west, tags=tags)
 
         # Plot
         fig, ax = plt.subplots(figsize=(6, 6))
@@ -197,25 +136,32 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
         ax.set_xlim(west, east)
         ax.set_ylim(south, north)
         ax.set_title(place_name, fontsize=14)
+        fig.tight_layout()
 
         logger.info(f"Successfully plotted map for {place_name}")
 
-        plt.show()
+        if return_fig:
+            # Caller wants the figure object to manipulate or display themselves.
+            return fig
 
+        # Default behaviour: display the figure and return None (keeps previous logic)
+        plt.show()
         return None
 
     except Exception as e:
         logger.error(f"Error while plotting map for {place_name}: {e}")
         print(f"Error: Could not plot map for {place_name}. {e}")
         return None
-    
+
+
 def plot_city_map_with_points(
     place_name: str,
     latitude: float,
     longitude: float,
     boxing_size: float,
-    porini_df
-) -> Optional[plt.Figure]:
+    porini_df: pd.DataFrame,
+    return_fig: bool = False,
+) -> Optional[Figure]:
     """
     Plot a city map using OpenStreetMap (OSM) data around a given location,
     and overlay dataset points (lat/lon) as red markers.
@@ -226,27 +172,31 @@ def plot_city_map_with_points(
         longitude (float): Center longitude
         boxing_size (float): Size of the bounding box (approx. in km)
         porini_df (pd.DataFrame): Dataset containing 'Latitude' and 'Longitude' columns
+        return_fig (bool): If True, do NOT call plt.show() and instead return the Figure object.
 
     Returns:
-        Optional[plt.Figure]: The matplotlib figure object if successful, None otherwise
+        Optional[matplotlib.figure.Figure]: The matplotlib figure object if return_fig is True,
+                                           otherwise None on success or None on failure.
     """
-
     logger.info(f"Starting map plot for {place_name} with dataset points")
 
     try:
-        # Define bounding box
+        # Validate the porini_df has the expected columns
+        if not {"Latitude", "Longitude"}.issubset(porini_df.columns):
+            raise ValueError("porini_df must contain 'Latitude' and 'Longitude' columns")
+
+        # Define bounding box (degrees)
         box_width = boxing_size / 111  # ~111 km per degree
         box_height = boxing_size / 111
         north = latitude + box_height / 2
         south = latitude - box_height / 2
         west = longitude - box_width / 2
         east = longitude + box_width / 2
-        bbox = (west, south, east, north)
 
-        logger.info(f"Bounding box: {bbox}")
+        logger.info(f"Bounding box (N,S,E,W): {north}, {south}, {east}, {west}")
 
-        # Define tags
-        tags = {
+        # Tags
+        tags: TagsType = {
             "amenity": True,
             "building": True,
             "historic": True,
@@ -256,10 +206,11 @@ def plot_city_map_with_points(
             "religion": True,
             "memorial": True,
         }
+        building_tags: TagsType = {"building": True}
 
         # Load OSM data
         logger.info("Fetching OSM graph data...")
-        graph = ox.graph_from_bbox(bbox)
+        graph = ox.graph_from_bbox(north, south, east, west)
 
         logger.info("Fetching OSM geocode data...")
         area = ox.geocode_to_gdf(place_name)
@@ -268,16 +219,16 @@ def plot_city_map_with_points(
         nodes, edges = ox.graph_to_gdfs(graph)
 
         logger.info("Fetching buildings data...")
-        buildings = ox.features_from_bbox(bbox, tags={"building": True})
+        buildings = ox.features_from_bbox(north, south, east, west, tags=building_tags)
 
         logger.info("Fetching POIs...")
-        pois = ox.features_from_bbox(bbox, tags=tags)
+        pois = ox.features_from_bbox(north, south, east, west, tags=tags)
 
         # Convert dataset to GeoDataFrame
         gdf_points = gpd.GeoDataFrame(
-            porini_df,
+            porini_df.copy(),
             geometry=gpd.points_from_xy(porini_df["Longitude"], porini_df["Latitude"]),
-            crs="EPSG:4326"
+            crs="EPSG:4326",
         )
 
         logger.info(f"Overlaying {len(gdf_points)} dataset points on map")
@@ -291,14 +242,21 @@ def plot_city_map_with_points(
         pois.plot(ax=ax, color="green", markersize=5, alpha=1)
 
         # Plot dataset points
-        gdf_points.plot(ax=ax, color="red", markersize=40, alpha=0.7, label="Dataset Points")
+        gdf_points.plot(
+            ax=ax, color="red", markersize=40, alpha=0.7, label="Dataset Points"
+        )
 
         ax.set_xlim(west, east)
         ax.set_ylim(south, north)
         ax.set_title(place_name, fontsize=14)
         ax.legend()
+        fig.tight_layout()
 
         logger.info(f"Successfully plotted map for {place_name}")
+
+        if return_fig:
+            return fig
+
         plt.show()
         return None
 
