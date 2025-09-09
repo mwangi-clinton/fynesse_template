@@ -173,7 +173,7 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
 
         # Load OSM data
         logger.info("Fetching OSM graph data...")
-        graph = ox.graph_from_bbox(north=north, south=south, east=east, west=west)  # ✅ FIXED
+        graph = ox.graph_from_bbox(bbox)  
         logger.info("Fetching OSM geocode data...")
         area = ox.geocode_to_gdf(place_name)
 
@@ -181,7 +181,7 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
         nodes, edges = ox.graph_to_gdfs(graph)
 
         logger.info("Fetching buildings data...")
-        buildings = ox.features_from_bbox(north=north, south=south, east=east, west=west, tags={"building": True})
+        buildings = ox.features_from_bbox(bbox, tags={"building": True})
 
         logger.info("Fetching POIs...")
         pois = ox.features_from_bbox(north=north, south=south, east=east, west=west, tags=tags)
