@@ -184,7 +184,7 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
         buildings = ox.features_from_bbox(bbox, tags={"building": True})
 
         logger.info("Fetching POIs...")
-        pois = ox.features_from_bbox(north=north, south=south, east=east, west=west, tags=tags)
+        pois = ox.features_from_bbox(bbox, tags=tags)
 
         # Plot
         fig, ax = plt.subplots(figsize=(6, 6))
