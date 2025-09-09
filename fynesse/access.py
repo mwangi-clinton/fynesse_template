@@ -206,7 +206,7 @@ def plot_city_map(place_name: str, latitude: float, longitude: float, boxing_siz
         logger.error(f"Error while plotting map for {place_name}: {e}")
         print(f"Error: Could not plot map for {place_name}. {e}")
         return None
-
+    
 def plot_city_map_with_points(
     place_name: str,
     latitude: float,
@@ -229,6 +229,8 @@ def plot_city_map_with_points(
         Optional[plt.Figure]: The matplotlib figure object if successful, None otherwise
     """
 
+    logger.info(f"Starting map plot for {place_name} with dataset points")
+
     try:
         # Define bounding box
         box_width = boxing_size / 111  # ~111 km per degree
@@ -238,6 +240,8 @@ def plot_city_map_with_points(
         west = longitude - box_width / 2
         east = longitude + box_width / 2
         bbox = (west, south, east, north)
+
+        logger.info(f"Bounding box: {bbox}")
 
         # Define tags
         tags = {
@@ -252,12 +256,20 @@ def plot_city_map_with_points(
         }
 
         # Load OSM data
-        graph = ox.graph_from_bbox(north, south, east, west)
+        logger.info("Fetching OSM graph data...")
+        graph = ox.graph_from_bbox(bbox)
+
+        logger.info("Fetching OSM geocode data...")
         area = ox.geocode_to_gdf(place_name)
 
+        logger.info("Fetching street network data...")
         nodes, edges = ox.graph_to_gdfs(graph)
+
+        logger.info("Fetching buildings data...")
         buildings = ox.features_from_bbox(bbox, tags={"building": True})
-        pois = ox.features_from_bbox(bbox, tags)
+
+        logger.info("Fetching POIs...")
+        pois = ox.features_from_bbox(bbox, tags=tags)
 
         # Convert dataset to GeoDataFrame
         gdf_points = gpd.GeoDataFrame(
@@ -265,6 +277,8 @@ def plot_city_map_with_points(
             geometry=gpd.points_from_xy(porini_df["Longitude"], porini_df["Latitude"]),
             crs="EPSG:4326"
         )
+
+        logger.info(f"Overlaying {len(gdf_points)} dataset points on map")
 
         # Plot
         fig, ax = plt.subplots(figsize=(6, 6))
@@ -282,8 +296,11 @@ def plot_city_map_with_points(
         ax.set_title(place_name, fontsize=14)
         ax.legend()
 
+        logger.info(f"Successfully plotted map for {place_name}")
+
         return fig
 
     except Exception as e:
+        logger.error(f"Error while plotting map for {place_name}: {e}")
         print(f"Error: Could not plot map for {place_name}. {e}")
         return None
